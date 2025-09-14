@@ -1,13 +1,12 @@
-use std::{u64, usize};
+use std::{u128, usize};
 
 use pyo3::prelude::*;
-use rand::Rng;
 
 // Crockford's Base32 alphabet (exclude I, L, O, U)
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[pyfunction]
-fn encode_base32(number: u64) -> PyResult<String> {
+fn encode_base32(number: u128) -> PyResult<String> {
     if number == 0 {
         return Ok("0".to_string());
     }
@@ -25,15 +24,15 @@ fn encode_base32(number: u64) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn decode_base32(encoded: &str) -> PyResult<u64> {
-    let mut result: u64 = 0;
+fn decode_base32(encoded: &str) -> PyResult<u128> {
+    let mut result: u128 = 0;
 
     for c in encoded.chars() {
         let value = match ALPHABET
             .iter()
             .position(|&x| x as char == c.to_ascii_uppercase())
         {
-            Some(pos) => pos as u64,
+            Some(pos) => pos as u128,
             None => {
                 return Err(pyo3::exceptions::PyValueError::new_err(format!(
                     "Invalid character '{}' in Base32 string",
