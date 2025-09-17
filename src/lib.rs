@@ -100,6 +100,29 @@ fn encode_base32_internal(number: u128) -> String {
     return result;
 }
 
+fn decode_base32_internal(encoded: &str) -> Result<u128, pyo3::PyErr> {
+    let mut result: u128 = 0;
+
+    for c in encoded.chars() {
+        let value = match ALPHABET
+            .iter()
+            .position(|&x| x as char == c.to_ascii_uppercase())
+        {
+            Some(pos) => pos as u128,
+            None => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "Invalid character '{}' in Base32 string",
+                    c
+                )))
+            }
+        };
+
+        result = result * 32 + value;
+    }
+
+    Ok(result)
+}
+
 #[pyfunction]
 fn ulid() -> PyResult<String> {
     let timestamp = SystemTime::now()
@@ -113,12 +136,42 @@ fn ulid() -> PyResult<String> {
     let ulid = Ulid::from_parts(timestamp, random);
     Ok(ulid.to_string())
 }
-//
+
+#[pyfunction]
+fn ulid_timestamp(ulid_str: &str) -> PyResult<u64> {
+    if ulid_str.len() != 26 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "ULID must be exactly 26 characters",
+        ));
+    }
+
+    let decoded = decode_base32_internal(ulid_str)?;
+    let ulid = Ulid(decoded);
+
+    Ok(ulid.timestamp_ms())
+}
+
+#[pyfunction]
+fn ulid_random(ulid_str: &str) -> PyResult<u128> {
+    if ulid_str.len() != 26 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "ULID must be exactly 26 characters",
+        ));
+    }
+
+    let decoded = decode_base32_internal(ulid_str)?;
+    let ulid = Ulid(decoded);
+
+    Ok(ulid.random())
+}
+
 /// A Python module implemented in Rust.
 #[pymodule]
 fn pyulid(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(encode_base32, m)?)?;
     m.add_function(wrap_pyfunction!(decode_base32, m)?)?;
     m.add_function(wrap_pyfunction!(ulid, m)?)?;
+    m.add_function(wrap_pyfunction!(ulid_timestamp, m)?)?;
+    m.add_function(wrap_pyfunction!(ulid_random, m)?)?;
     Ok(())
 }
