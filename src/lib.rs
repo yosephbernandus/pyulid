@@ -185,6 +185,29 @@ fn ulid_with_timestamp(timestamp_ms: u64) -> PyResult<String> {
     Ok(ulid.to_string())
 }
 
+#[pyfunction]
+fn ulid_to_uuid(ulid_str: &str) -> PyResult<String> {
+    if ulid_str.len() != 26 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "ULID must be exactly 26 characters",
+        ));
+    }
+
+    let decoded = decode_base32_internal(ulid_str)?;
+
+    let hex = format!("{:032x}", decoded);
+    let uuid = format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    );
+
+    Ok(uuid)
+}
+
 /// A Python module implemented in Rust.
 #[pymodule]
 fn pyulid(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -195,6 +218,6 @@ fn pyulid(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ulid_random, m)?)?;
     m.add_function(wrap_pyfunction!(ulid_is_valid, m)?)?;
     m.add_function(wrap_pyfunction!(ulid_with_timestamp, m)?)?;
-
+    m.add_function(wrap_pyfunction!(ulid_to_uuid, m)?)?;
     Ok(())
 }
