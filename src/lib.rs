@@ -1,6 +1,6 @@
 use std::{
     sync::{Mutex, OnceLock},
-    u128, usize,
+    usize,
 };
 
 use pyo3::prelude::*;
@@ -66,44 +66,12 @@ impl MonotonicState {
 
 #[pyfunction]
 fn encode_base32(number: u128) -> PyResult<String> {
-    if number == 0 {
-        return Ok("0".to_string());
-    }
-
-    let mut result = String::new();
-    let mut n = number;
-
-    while n > 0 {
-        let remainder = (n % 32) as usize;
-        result.insert(0, ALPHABET[remainder] as char);
-        n /= 32;
-    }
-
-    Ok(result)
+    Ok(encode_base32_internal(number))
 }
 
 #[pyfunction]
 fn decode_base32(encoded: &str) -> PyResult<u128> {
-    let mut result: u128 = 0;
-
-    for c in encoded.chars() {
-        let value = match ALPHABET
-            .iter()
-            .position(|&x| x as char == c.to_ascii_uppercase())
-        {
-            Some(pos) => pos as u128,
-            None => {
-                return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Invalid character '{}' in Base32 string",
-                    c
-                )))
-            }
-        };
-
-        result = result * 32 + value;
-    }
-
-    Ok(result)
+    decode_base32_internal(encoded)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -136,25 +104,16 @@ impl Ulid {
     }
 }
 
-fn encode_base32_internal(number: u128) -> String {
-    if number == 0 {
-        return "0".to_string();
+fn encode_base32_internal(mut number: u128) -> String {
+    let mut buffer = [b'0'; 26]; // Pre-allocated array
+    let mut pos = 25;
+    while number > 0 && pos > 0 {
+        buffer[pos] = ALPHABET[(number & 0x1f) as usize]; // Direct access to mem pre-allocated
+        number >>= 5;
+        pos -= 1;
     }
 
-    let mut result = String::new();
-    let mut n = number;
-
-    while n > 0 {
-        let remainder = (n % 32) as usize;
-        result.insert(0, ALPHABET[remainder] as char);
-        n /= 32;
-    }
-
-    while result.len() < 26 {
-        result.insert(0, '0');
-    }
-
-    return result;
+    String::from_utf8(buffer.to_vec()).unwrap()
 }
 
 fn decode_base32_internal(encoded: &str) -> Result<u128, pyo3::PyErr> {
@@ -174,7 +133,7 @@ fn decode_base32_internal(encoded: &str) -> Result<u128, pyo3::PyErr> {
             }
         };
 
-        result = result * 32 + value;
+        result = (result << 5) | value; // Bit shift
     }
 
     Ok(result)
