@@ -7,20 +7,21 @@ use pyo3::prelude::*;
 use rand::Rng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-// Handling state for monotonic generation
-// OnceLock approach - overhead only on first call
-static MONOTONIC_STATE: OnceLock<Mutex<MonotonicState>> = OnceLock::new();
+// Unified ULID state for both regular and monotonic generation
+static ULID_STATE: OnceLock<Mutex<UlidState>> = OnceLock::new();
 
 // Crockford's Base32 alphabet (exclude I, L, O, U)
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
 #[derive(Debug)]
-struct MonotonicState {
+struct UlidState {
     last_timestamp: u64,
     last_random: u128,
+    timestamp_str: [u8; 10], // Pre-encoded timestamp
+    buffer: [u8; 26],        // Reusable buffer for string construction
 }
 
-impl MonotonicState {
+impl UlidState {
     fn new() -> Self {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -30,37 +31,63 @@ impl MonotonicState {
         let mut rng = rand::rng();
         let random = rng.random::<u128>() & Ulid::bitmask(80);
 
-        MonotonicState {
+        // Pre-encode initial timestamp
+        let timestamp_str = encode_timestamp(timestamp);
+
+        UlidState {
             last_timestamp: timestamp,
             last_random: random,
+            timestamp_str,
+            buffer: [b'0'; 26],
         }
     }
 
-    fn generate(&mut self) -> Result<Ulid, String> {
+    /// string generation using pre-cached timestamp encoding
+    #[inline(always)]
+    fn generate_string(&mut self, monotonic: bool) -> Result<String, String> {
         let current_timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64;
 
+        // Update state
         if current_timestamp == self.last_timestamp {
-            // Same millisecond: increment random component
             if self.last_random == Ulid::bitmask(80) {
-                return Err(
-                    "Random component overflow, too many ULIDs in same milliseconds".to_string(),
-                );
+                if monotonic {
+                    return Err(
+                        "Random component overflow, too many ULIDs in same millisecond".to_string(),
+                    );
+                } else {
+                    let mut rng = rand::rng();
+                    self.last_random = rng.random::<u128>() & Ulid::bitmask(80);
+                }
+            } else {
+                self.last_random += 1;
             }
-            self.last_random += 1;
         } else if current_timestamp > self.last_timestamp {
-            // New Millisecond: generate new random
             self.last_timestamp = current_timestamp;
             let mut rng = rand::rng();
             self.last_random = rng.random::<u128>() & Ulid::bitmask(80);
+            self.timestamp_str = encode_timestamp(current_timestamp);
         } else {
-            // Clock moved backwards, handle gracefully
-            return Err("Clock moved backwards, cannot generate monotonic ULID".to_string());
+            if monotonic {
+                return Err("Clock moved backwards, cannot generate monotonic ULID".to_string());
+            } else {
+                if self.last_random == Ulid::bitmask(80) {
+                    let mut rng = rand::rng();
+                    self.last_random = rng.random::<u128>() & Ulid::bitmask(80);
+                } else {
+                    self.last_random += 1;
+                }
+            }
         }
 
-        Ok(Ulid::from_parts(self.last_timestamp, self.last_random))
+        // String construction using cached timestamp
+        let random_bytes = encode_random(self.last_random);
+        self.buffer[0..10].copy_from_slice(&self.timestamp_str);
+        self.buffer[10..26].copy_from_slice(&random_bytes);
+
+        Ok(unsafe { String::from_utf8_unchecked(self.buffer.to_vec()) })
     }
 }
 
@@ -139,18 +166,41 @@ fn decode_base32_internal(encoded: &str) -> Result<u128, pyo3::PyErr> {
     Ok(result)
 }
 
+#[inline(always)]
+fn encode_timestamp(mut timestamp: u64) -> [u8; 10] {
+    let mut buffer = [b'0'; 10];
+
+    // Encode from right to left
+    for i in (0..10).rev() {
+        buffer[i] = ALPHABET[(timestamp & 0x1F) as usize];
+        timestamp >>= 5; // Bit shift equals to n /= 32
+    }
+
+    buffer
+}
+
+#[inline(always)]
+fn encode_random(mut random: u128) -> [u8; 16] {
+    let mut buffer = [b'0'; 16];
+
+    // Encode from right to left like
+    for i in (0..16).rev() {
+        buffer[i] = ALPHABET[(random & 0x1F) as usize];
+        random >>= 5; // Bit shift instead of division
+    }
+
+    buffer
+}
+
 #[pyfunction]
 fn ulid() -> PyResult<String> {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as u64;
+    let state_mutex = ULID_STATE.get_or_init(|| Mutex::new(UlidState::new()));
+    let mut state = state_mutex.lock().unwrap();
 
-    let mut rng = rand::rng();
-    let random: u128 = rng.random::<u128>() & Ulid::bitmask(80);
-
-    let ulid = Ulid::from_parts(timestamp, random);
-    Ok(ulid.to_string())
+    match state.generate_string(false) {
+        Ok(ulid_str) => Ok(ulid_str),
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
 }
 
 #[pyfunction]
@@ -242,14 +292,32 @@ fn uuid_to_ulid(uuid_str: &str) -> PyResult<String> {
 
 #[pyfunction]
 fn ulid_monotonic() -> PyResult<String> {
-    let state_mutex = MONOTONIC_STATE.get_or_init(|| Mutex::new(MonotonicState::new()));
-
+    let state_mutex = ULID_STATE.get_or_init(|| Mutex::new(UlidState::new()));
     let mut state = state_mutex.lock().unwrap();
 
-    match state.generate() {
-        Ok(ulid) => Ok(ulid.to_string()),
+    // Use strict monotonic mode (monotonic = true) - errors on overflow/clock issues
+    match state.generate_string(true) {
+        Ok(ulid_str) => Ok(ulid_str),
         Err(err) => Err(pyo3::exceptions::PyRuntimeError::new_err(err)),
     }
+}
+
+#[pyfunction]
+fn ulid_from_str(ulid_str: &str) -> PyResult<String> {
+    if ulid_str.len() != 26 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "ULID must be exactly 26 characters",
+        ));
+    }
+
+    if !ulid_is_valid(ulid_str) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "Invalid ULID string format",
+        ));
+    }
+
+    // Return normalized (uppercase) version
+    Ok(ulid_str.to_ascii_uppercase())
 }
 
 /// A Python module implemented in Rust.
@@ -265,5 +333,6 @@ fn pyulid(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ulid_to_uuid, m)?)?;
     m.add_function(wrap_pyfunction!(uuid_to_ulid, m)?)?;
     m.add_function(wrap_pyfunction!(ulid_monotonic, m)?)?;
+    m.add_function(wrap_pyfunction!(ulid_from_str, m)?)?;
     Ok(())
 }
