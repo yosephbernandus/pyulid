@@ -13,6 +13,44 @@ static ULID_STATE: OnceLock<Mutex<UlidState>> = OnceLock::new();
 // Crockford's Base32 alphabet (exclude I, L, O, U)
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
+// Pre-computed lookup table for O(1) Base32 decoding
+const DECODE_TABLE: [u8; 256] = {
+    let mut table = [0xFF; 256]; // 0xFF = invalid character marker
+    
+    // Map uppercase alphabet
+    table[b'0' as usize] = 0;   table[b'1' as usize] = 1;
+    table[b'2' as usize] = 2;   table[b'3' as usize] = 3;
+    table[b'4' as usize] = 4;   table[b'5' as usize] = 5;
+    table[b'6' as usize] = 6;   table[b'7' as usize] = 7;
+    table[b'8' as usize] = 8;   table[b'9' as usize] = 9;
+    table[b'A' as usize] = 10;  table[b'B' as usize] = 11;
+    table[b'C' as usize] = 12;  table[b'D' as usize] = 13;
+    table[b'E' as usize] = 14;  table[b'F' as usize] = 15;
+    table[b'G' as usize] = 16;  table[b'H' as usize] = 17;
+    table[b'J' as usize] = 18;  table[b'K' as usize] = 19;
+    table[b'M' as usize] = 20;  table[b'N' as usize] = 21;
+    table[b'P' as usize] = 22;  table[b'Q' as usize] = 23;
+    table[b'R' as usize] = 24;  table[b'S' as usize] = 25;
+    table[b'T' as usize] = 26;  table[b'V' as usize] = 27;
+    table[b'W' as usize] = 28;  table[b'X' as usize] = 29;
+    table[b'Y' as usize] = 30;  table[b'Z' as usize] = 31;
+    
+    // Map lowercase alphabet (case insensitive)
+    table[b'a' as usize] = 10;  table[b'b' as usize] = 11;
+    table[b'c' as usize] = 12;  table[b'd' as usize] = 13;
+    table[b'e' as usize] = 14;  table[b'f' as usize] = 15;
+    table[b'g' as usize] = 16;  table[b'h' as usize] = 17;
+    table[b'j' as usize] = 18;  table[b'k' as usize] = 19;
+    table[b'm' as usize] = 20;  table[b'n' as usize] = 21;
+    table[b'p' as usize] = 22;  table[b'q' as usize] = 23;
+    table[b'r' as usize] = 24;  table[b's' as usize] = 25;
+    table[b't' as usize] = 26;  table[b'v' as usize] = 27;
+    table[b'w' as usize] = 28;  table[b'x' as usize] = 29;
+    table[b'y' as usize] = 30;  table[b'z' as usize] = 31;
+    
+    table
+};
+
 #[derive(Debug)]
 struct UlidState {
     last_timestamp: u64,
@@ -74,7 +112,8 @@ impl UlidState {
         self.buffer[0..10].copy_from_slice(&self.timestamp_str);
         self.buffer[10..26].copy_from_slice(&random_bytes);
 
-        Ok(unsafe { String::from_utf8_unchecked(self.buffer.to_vec()) })
+        // Efficient string creation - avoid intermediate Vec
+        Ok(unsafe { String::from_utf8_unchecked(Vec::from(self.buffer)) })
     }
 }
 
@@ -133,21 +172,15 @@ fn encode_base32_internal(mut number: u128) -> String {
 fn decode_base32_internal(encoded: &str) -> Result<u128, pyo3::PyErr> {
     let mut result: u128 = 0;
 
-    for c in encoded.chars() {
-        let value = match ALPHABET
-            .iter()
-            .position(|&x| x as char == c.to_ascii_uppercase())
-        {
-            Some(pos) => pos as u128,
-            None => {
-                return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Invalid character '{}' in Base32 string",
-                    c
-                )))
-            }
-        };
-
-        result = (result << 5) | value; // Bit shift
+    for byte in encoded.bytes() {
+        let value = DECODE_TABLE[byte as usize];
+        if value == 0xFF {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid character '{}' in Base32 string",
+                byte as char
+            )));
+        }
+        result = (result << 5) | (value as u128);
     }
 
     Ok(result)
