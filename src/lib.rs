@@ -44,7 +44,8 @@ impl UlidState {
 
     /// string generation using pre-cached timestamp encoding
     #[inline(always)]
-    fn generate_string(&mut self, monotonic: bool) -> Result<String, String> {
+    fn generate_string(&mut self) -> Result<String, String> {
+        // This random default using monotonic so it can be ordered better
         let current_timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -53,14 +54,9 @@ impl UlidState {
         // Update state
         if current_timestamp == self.last_timestamp {
             if self.last_random == Ulid::bitmask(80) {
-                if monotonic {
-                    return Err(
-                        "Random component overflow, too many ULIDs in same millisecond".to_string(),
-                    );
-                } else {
-                    let mut rng = rand::rng();
-                    self.last_random = rng.random::<u128>() & Ulid::bitmask(80);
-                }
+                return Err(
+                    "Random component overflow, too many ULIDs in same millisecond".to_string(),
+                );
             } else {
                 self.last_random += 1;
             }
@@ -70,16 +66,7 @@ impl UlidState {
             self.last_random = rng.random::<u128>() & Ulid::bitmask(80);
             self.timestamp_str = encode_timestamp(current_timestamp);
         } else {
-            if monotonic {
-                return Err("Clock moved backwards, cannot generate monotonic ULID".to_string());
-            } else {
-                if self.last_random == Ulid::bitmask(80) {
-                    let mut rng = rand::rng();
-                    self.last_random = rng.random::<u128>() & Ulid::bitmask(80);
-                } else {
-                    self.last_random += 1;
-                }
-            }
+            return Err("Clock moved backwards, cannot generate ULID".to_string());
         }
 
         // String construction using cached timestamp
@@ -197,7 +184,7 @@ fn ulid() -> PyResult<String> {
     let state_mutex = ULID_STATE.get_or_init(|| Mutex::new(UlidState::new()));
     let mut state = state_mutex.lock().unwrap();
 
-    match state.generate_string(false) {
+    match state.generate_string() {
         Ok(ulid_str) => Ok(ulid_str),
         Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
     }
@@ -291,18 +278,6 @@ fn uuid_to_ulid(uuid_str: &str) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn ulid_monotonic() -> PyResult<String> {
-    let state_mutex = ULID_STATE.get_or_init(|| Mutex::new(UlidState::new()));
-    let mut state = state_mutex.lock().unwrap();
-
-    // Use strict monotonic mode (monotonic = true) - errors on overflow/clock issues
-    match state.generate_string(true) {
-        Ok(ulid_str) => Ok(ulid_str),
-        Err(err) => Err(pyo3::exceptions::PyRuntimeError::new_err(err)),
-    }
-}
-
-#[pyfunction]
 fn ulid_from_str(ulid_str: &str) -> PyResult<String> {
     if ulid_str.len() != 26 {
         return Err(pyo3::exceptions::PyValueError::new_err(
@@ -332,7 +307,6 @@ fn pyulid(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ulid_with_timestamp, m)?)?;
     m.add_function(wrap_pyfunction!(ulid_to_uuid, m)?)?;
     m.add_function(wrap_pyfunction!(uuid_to_ulid, m)?)?;
-    m.add_function(wrap_pyfunction!(ulid_monotonic, m)?)?;
     m.add_function(wrap_pyfunction!(ulid_from_str, m)?)?;
     Ok(())
 }

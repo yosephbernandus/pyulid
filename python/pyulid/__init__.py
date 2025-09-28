@@ -37,7 +37,6 @@ ULIDUnion: TypeAlias = Union["ULID", str]
 
 # Re-export fast functions for python use
 ulid = _pyulid_rs.ulid
-ulid_monotonic = _pyulid_rs.ulid_monotonic
 ulid_with_timestamp = _pyulid_rs.ulid_with_timestamp
 ulid_is_valid = _pyulid_rs.ulid_is_valid
 ulid_timestamp = _pyulid_rs.ulid_timestamp
@@ -45,7 +44,6 @@ ulid_random = _pyulid_rs.ulid_random
 ulid_to_uuid = _pyulid_rs.ulid_to_uuid
 uuid_to_ulid = _pyulid_rs.uuid_to_ulid
 encode_base32 = _pyulid_rs.encode_base32
-encode_timestamp = _pyulid_rs.encode_timestamp
 decode_base32 = _pyulid_rs.decode_base32
 ulid_from_str = _pyulid_rs.ulid_from_str
 
@@ -55,7 +53,6 @@ __all__ = [
     "ULIDString",
     "ULIDUnion",
     "ulid",
-    "ulid_monotonic",
     "ulid_with_timestamp",
     "ulid_is_valid",
     "ulid_timestamp",
@@ -104,7 +101,6 @@ class ULID:
     Example:
         >>> ulid = ULID()  # Generate new ULID
         >>> ulid = ULID.from_str("01ARZ3NDEKTSV4RRFFQ69G5FAV")  # Parse string
-        >>> ulid = ULID.monotonic()  # Generate monotonic ULID
         >>> print(ulid.datetime)  # Get creation time
     """
 
@@ -247,25 +243,6 @@ class ULID:
             True if valid, False otherwise
         """
         return _pyulid_rs.ulid_is_valid(self._ulid)
-
-    @classmethod
-    def monotonic(cls) -> Self:
-        """
-        Generate a monotonic ULID (guaranteed ordering).
-
-        Monotonic ULIDs ensure that sequential calls will produce
-        lexicographically sorted ULIDs, even within the same millisecond.
-
-        Returns:
-            New ULID object with monotonic ordering guarantee
-
-        Raises:
-            RuntimeError: If too many ULIDs generated in same millisecond
-        """
-        ulid_str = _pyulid_rs.ulid_monotonic()
-        instance = cls.__new__(cls)
-        instance._ulid = ulid_str
-        return instance
 
     def __str__(self) -> str:
         """Return the ULID as a string."""
