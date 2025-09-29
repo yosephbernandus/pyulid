@@ -1,5 +1,5 @@
 [package]
-name = "pyulid"
+name = "ulid-python"
 version = "0.1.0"
 edition = "2021"
 

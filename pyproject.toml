@@ -3,8 +3,8 @@ requires = ["maturin>=1.8,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "pyulid"
-description = "ULID library for python"
+name = "ulid-python"
+description = "High-performance ULID (Universally Unique Lexicographically Sortable Identifier) implementation for Python"
 requires-python = ">=3.8"
 authors = [{name = "Yoseph Bernandus"}]
 dependencies = [

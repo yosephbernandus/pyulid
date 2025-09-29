@@ -1,8 +1,8 @@
-# PyULID
+# ULID Python
 
-[![CI](https://github.com/yosephbernandus/pyulid/workflows/CI/badge.svg)](https://github.com/yosephbernandus/pyulid/actions)
-[![PyPI](https://img.shields.io/pypi/v/pyulid.svg)](https://pypi.org/project/pyulid/)
-[![Python](https://img.shields.io/pypi/pyversions/pyulid.svg)](https://pypi.org/project/pyulid/)
+[![CI](https://github.com/yosephbernandus/ulid-python/workflows/CI/badge.svg)](https://github.com/yosephbernandus/ulid-python/actions)
+[![PyPI](https://img.shields.io/pypi/v/ulid-python.svg)](https://pypi.org/project/ulid-python/)
+[![Python](https://img.shields.io/pypi/pyversions/ulid-python.svg)](https://pypi.org/project/ulid-python/)
 
 A high-performance ULID (Universally Unique Lexicographically Sortable Identifier) implementation for Python.
 
@@ -20,10 +20,10 @@ ULID is a 128-bit identifier that is lexicographically sortable and encodes a ti
 
 ```bash
 # Using pip
-pip install pyulid
+pip install ulid-python
 
 # Using uv (recommended for faster installs)
-uv add pyulid
+uv add ulid-python
 ```
 
 ## Usage
@@ -173,8 +173,8 @@ Contributions are welcome! This project is actively maintained and we encourage:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yosephbernandus/pyulid.git
-cd pyulid
+git clone https://github.com/yosephbernandus/ulid-python.git
+cd ulid-python
 
 # Install development dependencies
 uv sync --dev
