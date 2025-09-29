@@ -57,7 +57,7 @@ encode_base32 = _pyulid_rs.encode_base32
 decode_base32 = _pyulid_rs.decode_base32
 ulid_from_str = _pyulid_rs.ulid_from_str
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __all__ = [
     "ULID",
     "ULIDString",
