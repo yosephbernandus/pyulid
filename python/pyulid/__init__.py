@@ -15,7 +15,17 @@ Example:
 from . import pyulid as _pyulid_rs
 
 from datetime import datetime
-from typing import Union, Optional, overload, TYPE_CHECKING, TypeAlias
+from typing import Union, Optional, overload, TYPE_CHECKING
+import sys
+
+if sys.version_info >= (3, 10):
+    from typing import TypeAlias
+else:
+    try:
+        from typing_extensions import TypeAlias
+    except ImportError:
+        # Fallback for older Python without typing_extensions
+        TypeAlias = type
 
 if TYPE_CHECKING:
     from typing_extensions import Self
