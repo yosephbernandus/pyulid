@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/yosephbernandus/ulid-python/workflows/CI/badge.svg)](https://github.com/yosephbernandus/ulid-python/actions)
 [![PyPI](https://img.shields.io/pypi/v/ulid-python.svg)](https://pypi.org/project/ulid-python/)
-[![Python](https://img.shields.io/pypi/pyversions/ulid-python.svg)](https://pypi.org/project/ulid-python/)
 
 A high-performance ULID (Universally Unique Lexicographically Sortable Identifier) implementation for Python.
 
