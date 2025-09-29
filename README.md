@@ -1,6 +1,6 @@
 # PyULID
 
-[![CI](https://github.com/yourusername/pyulid/workflows/CI/badge.svg)](https://github.com/yourusername/pyulid/actions)
+[![CI](https://github.com/yosephbernandus/pyulid/workflows/CI/badge.svg)](https://github.com/yosephbernandus/pyulid/actions)
 [![PyPI](https://img.shields.io/pypi/v/pyulid.svg)](https://pypi.org/project/pyulid/)
 [![Python](https://img.shields.io/pypi/pyversions/pyulid.svg)](https://pypi.org/project/pyulid/)
 
@@ -169,7 +169,7 @@ Contributions are welcome! This project is actively maintained and we encourage:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pyulid.git
+git clone https://github.com/yosephbernandus/pyulid.git
 cd pyulid
 
 # Install development dependencies
