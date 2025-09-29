@@ -19,7 +19,11 @@ ULID is a 128-bit identifier that is lexicographically sortable and encodes a ti
 ## Installation
 
 ```bash
+# Using pip
 pip install pyulid
+
+# Using uv (recommended for faster installs)
+uv add pyulid
 ```
 
 ## Usage
