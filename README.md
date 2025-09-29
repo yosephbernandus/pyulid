@@ -130,14 +130,15 @@ for i in range(1, len(ulids)):
         assert pyulid.ulid_random(ulids[i]) > pyulid.ulid_random(ulids[i-1])
 ```
 
-## Why not UUID?
+## Why not UUIDv4?
 
-UUIDs are not lexicographically sortable and don't encode timestamp information:
+UUIDv4 (random UUIDs) are not lexicographically sortable and don't encode timestamp information:
 
-- **Sortability**: ULIDs sort chronologically when generated sequentially
-- **Timestamp**: ULIDs encode creation time for easy extraction
-- **Compactness**: 26 characters vs 36 for UUID string representation
-- **Performance**: Faster generation and comparison
+- **Sortability**: ULIDs sort chronologically when generated sequentially, UUIDv4s are random
+- **Timestamp**: ULIDs encode creation time for easy extraction, UUIDv4s don't
+- **Compactness**: 26 characters vs 36 for UUID string representation  
+- **Performance**: Faster generation and comparison than UUIDv4
+- **Database Indexing**: Better for database performance due to sequential nature
 
 ## Specification
 

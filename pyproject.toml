@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "ulid-python"
-description = "High-performance ULID (Universally Unique Lexicographically Sortable Identifier) implementation for Python"
+description = "ULID (Universally Unique Lexicographically Sortable Identifier) implementation for Python - a better alternative to UUIDv4"
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [{name = "Yoseph Bernandus"}]
