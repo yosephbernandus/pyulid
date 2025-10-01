@@ -210,11 +210,9 @@ wheels = [
 
 [[package]]
 name = "ulid-python"
-version = "0.1.0"
+version = "1.0.1"
 source = { editable = "." }
 dependencies = [
-    { name = "pytest", version = "8.3.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "pytest", version = "8.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
 ]
@@ -238,7 +236,6 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=6.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=6.0" },
     { name = "ruff", marker = "extra == 'dev'" },
